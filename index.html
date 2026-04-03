@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Training Coach — Marathon & Triathlon</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary: #eeede8;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --border: rgba(0,0,0,0.12);
+    --border-md: rgba(0,0,0,0.22);
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1c1c1e;
+      --bg-secondary: #2c2c2e;
+      --bg-tertiary: #3a3a3c;
+      --text-primary: #f2f2f7;
+      --text-secondary: #aeaeb2;
+      --border: rgba(255,255,255,0.1);
+      --border-md: rgba(255,255,255,0.2);
+    }
+  }
+  body { font-family: var(--font); background: var(--bg-tertiary); color: var(--text-primary); min-height: 100vh; }
+  .container { max-width: 860px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+  h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 1.5rem; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+  .tab { padding: 8px 16px; font-size: 13px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: var(--text-secondary); font-family: var(--font); margin-bottom: -1px; }
+  .tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary); font-weight: 500; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 11px; font-weight: 500; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .race-strip { display: flex; gap: 8px; margin-bottom: 1rem; }
+  .race-pill { flex: 1; border-radius: var(--radius-md); padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+  .marathon-pill { background: #FAEEDA; border: 0.5px solid #EF9F27; }
+  .tri-pill { background: #E6F1FB; border: 0.5px solid #85B7EB; }
+  .metrics-row { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 1rem; }
+  @media (max-width: 600px) { .metrics-row { grid-template-columns: repeat(2, 1fr); } .race-strip { flex-direction: column; } }
+  .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 10px 12px; }
+  .metric-label { font-size: 10px; color: var(--text-secondary); margin-bottom: 3px; }
+  .metric-value { font-size: 18px; font-weight: 500; }
+  .metric-sub { font-size: 10px; color: var(--text-secondary); margin-top: 1px; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 5px; }
+  @media (max-width: 700px) { .week-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 480px) { .week-grid { grid-template-columns: repeat(2, 1fr); } }
+  .day-card { border-radius: var(--radius-md); padding: 8px; min-height: 120px; border: 0.5px solid var(--border); background: var(--bg-primary); }
+  .day-card.today-highlight { background: var(--bg-secondary); border: 1.5px solid var(--border-md); }
+  .day-name { font-size: 10px; font-weight: 500; color: var(--text-secondary); line-height: 1.2; }
+  .day-date { font-size: 9px; color: var(--text-secondary); opacity: 0.7; margin-bottom: 6px; }
+  .day-workout { font-size: 10px; font-weight: 500; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; line-height: 1.3; }
+  .swim { background: #E6F1FB; color: #0C447C; }
+  .bike { background: #EAF3DE; color: #27500A; }
+  .run { background: #FAEEDA; color: #633806; }
+  .strength { background: #EEEDFE; color: #3C3489; }
+  .rest { background: var(--bg-secondary); color: var(--text-secondary); }
+  .note { font-size: 9px; color: var(--text-secondary); margin-bottom: 2px; line-height: 1.35; }
+  .goal { font-size: 9px; color: var(--text-secondary); font-style: italic; line-height: 1.3; margin-top: 1px; }
+  .phase-toggle { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .phase-btn { padding: 6px 14px; font-size: 12px; border: 0.5px solid var(--border-md); border-radius: 20px; background: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font); }
+  .phase-btn.active { background: var(--text-primary); color: var(--bg-primary); border-color: var(--text-primary); }
+  .insight-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; line-height: 1.6; }
+  .insight-row:last-child { border-bottom: none; }
+  .insight-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .kd-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--border); font-size: 12px; }
+  .kd-row:last-child { border-bottom: none; }
+  .chat-wrap { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 8px; }
+  .chat-area { display: flex; flex-direction: column; gap: 10px; max-height: 460px; overflow-y: auto; padding: 1rem 1.25rem; }
+  .msg { padding: 10px 14px; border-radius: var(--radius-lg); max-width: 88%; font-size: 13px; line-height: 1.65; }
+  .msg.coach { background: var(--bg-secondary); align-self: flex-start; }
+  .msg.user { background: #EEEDFE; color: #3C3489; align-self: flex-end; }
+  .chat-input-row { display: flex; gap: 8px; }
+  .chat-input-row input { flex: 1; padding: 10px 14px; font-size: 13px; border: 0.5px solid var(--border-md); border-radius: var(--radius-lg); background: var(--bg-primary); color: var(--text-primary); font-family: var(--font); outline: none; }
+  .chat-input-row input:focus { border-color: var(--border-md); }
+  .chat-input-row button { padding: 10px 18px; font-size: 13px; font-weight: 500; border: 0.5px solid var(--border-md); border-radius: var(--radius-lg); background: var(--text-primary); color: var(--bg-primary); cursor: pointer; font-family: var(--font); white-space: nowrap; }
+  .chat-input-row button:hover { opacity: 0.85; }
+  .quick-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .quick-btn { font-size: 12px; padding: 5px 11px; border: 0.5px solid var(--border-md); border-radius: 20px; background: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font); }
+  .quick-btn:hover { background: var(--bg-secondary); color: var(--text-primary); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-secondary); display: inline-block; animation: blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:.2}40%{opacity:1} }
+  .api-key-bar { background: #FAEEDA; border: 0.5px solid #EF9F27; border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 1rem; font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .api-key-bar input { flex: 1; min-width: 200px; padding: 6px 10px; font-size: 12px; border: 0.5px solid #EF9F27; border-radius: 6px; background: white; color: #333; font-family: monospace; }
+  .api-key-bar button { padding: 6px 12px; font-size: 12px; border: none; border-radius: 6px; background: #633806; color: white; cursor: pointer; font-family: var(--font); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .status-dot.green { background: #639922; }
+  .status-dot.red { background: #E24B4A; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>AI training coach</h1>
+  <p class="subtitle">Marathon Jun 6, 2026 &nbsp;·&nbsp; Triathlon Jul 25, 2026 &nbsp;·&nbsp; Swim · Bike · Run · Strength</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('week',this)">This week</button>
+    <button class="tab" onclick="switchTab('plan',this)">Race plan</button>
+    <button class="tab" onclick="switchTab('insights',this)">Coaching notes</button>
+    <button class="tab" onclick="switchTab('coach',this)">AI coach</button>
+  </div>
+
+  <!-- THIS WEEK -->
+  <div id="tab-week" class="section active">
+    <div class="race-strip">
+      <div class="race-pill marathon-pill">
+        <div><div style="font-size:14px;font-weight:500;color:#633806;">Marathon</div><div style="font-size:11px;color:#854F0B;">June 6, 2026</div></div>
+        <div style="text-align:right;"><div style="font-size:24px;font-weight:500;color:#633806;" id="m-days">—</div><div style="font-size:10px;color:#854F0B;">days away</div></div>
+      </div>
+      <div class="race-pill tri-pill">
+        <div><div style="font-size:14px;font-weight:500;color:#185FA5;">Triathlon</div><div style="font-size:11px;color:#185FA5;">July 25, 2026</div></div>
+        <div style="text-align:right;"><div style="font-size:24px;font-weight:500;color:#185FA5;" id="t-days">—</div><div style="font-size:10px;color:#185FA5;">days away</div></div>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric"><div class="metric-label">Current phase</div><div class="metric-value" style="font-size:13px;line-height:1.4;" id="m-phase">—</div></div>
+      <div class="metric"><div class="metric-label">Weekly runs</div><div class="metric-value">4–5</div><div class="metric-sub">Mon · Tue · Wed · Thu · Fri</div></div>
+      <div class="metric"><div class="metric-label">Gym days</div><div class="metric-value">2</div><div class="metric-sub">Tuesday & Thursday</div></div>
+      <div class="metric"><div class="metric-label">Key session</div><div class="metric-value" id="key-day">Fri</div><div class="metric-sub" id="key-label">Long run</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="week-label">Your week</div>
+      <div class="week-grid" id="week-grid"></div>
+      <p style="font-size:11px;color:var(--text-secondary);margin-top:10px;" id="week-note"></p>
+    </div>
+  </div>
+
+  <!-- RACE PLAN -->
+  <div id="tab-plan" class="section">
+    <div class="phase-toggle">
+      <button class="phase-btn active" onclick="showPlan('marathon',this)">Marathon phase</button>
+      <button class="phase-btn" onclick="showPlan('transition',this)">Transition week</button>
+      <button class="phase-btn" onclick="showPlan('tri',this)">Triathlon phase</button>
+    </div>
+    <div id="plan-marathon"><div class="card"><div class="card-title">Marathon week — your schedule</div><div class="week-grid" id="plan-marathon-grid"></div><p style="font-size:11px;color:var(--text-secondary);margin-top:10px;">Skip the Thursday optional run in peak weeks (18–20mi long run) to arrive at Friday completely fresh.</p></div></div>
+    <div id="plan-transition" style="display:none;"><div class="card"><div class="card-title">Transition week — Jun 7–13 (post-marathon)</div><div class="week-grid" id="plan-transition-grid"></div><p style="font-size:11px;color:var(--text-secondary);margin-top:10px;">10–14 days to properly recover. No hard run efforts. Swim and easy bike maintain aerobic fitness without stressing the legs.</p></div></div>
+    <div id="plan-tri" style="display:none;"><div class="card"><div class="card-title">Triathlon week — your schedule</div><div class="week-grid" id="plan-tri-grid"></div><p style="font-size:11px;color:var(--text-secondary);margin-top:10px;">Friday shifts from long run to long bike. Wednesday becomes a brick. Your marathon run fitness is a massive advantage on the tri run leg.</p></div></div>
+    <div class="card"><div class="card-title">Key season dates</div><div id="key-dates"></div></div>
+  </div>
+
+  <!-- COACHING NOTES -->
+  <div id="tab-insights" class="section">
+    <div class="card">
+      <div class="card-title">Marathon phase — schedule analysis</div>
+      <div class="insight-row"><div class="insight-dot" style="background:#639922;"></div><div><strong>Strength on Tue/Thu works well</strong> — lower body Tuesday, upper/core Thursday. You're never stacking hard lifts on top of hard run days, which protects quality on Wednesday and Friday.</div></div>
+      <div class="insight-row"><div class="insight-dot" style="background:#378ADD;"></div><div><strong>Swimming now builds your tri base</strong> — aerobic swim cross-training during marathon phase banks swim fitness without adding run impact. Keep it Z1-2 until after June 6th.</div></div>
+      <div class="insight-row"><div class="insight-dot" style="background:#E24B4A;"></div><div><strong>Biggest risk: Thu optional run → Fri long run</strong> — only 24hrs between them. In peak weeks, drop Thursday's run entirely. The miles aren't worth arriving tired at your most important session.</div></div>
+      <div class="insight-row"><div class="insight-dot" style="background:#BA7517;"></div><div><strong>Wednesday is your quality day</strong> — tempo runs, track intervals, and marathon-pace miles all live here. Perfectly positioned between Monday recovery and Friday long.</div></div>
+      <div class="insight-row"><div class="insight-dot" style="background:#7F77DD;"></div><div><strong>Weekend rest is a genuine advantage</strong> — two full recovery days before Monday's easy run means you absorb training better than athletes who run 7 days a week.</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Triathlon phase — schedule shifts</div>
+      <div class="insight-row"><div class="insight-dot" style="background:#378ADD;"></div><div><strong>Friday becomes long bike</strong> — same important slot, different sport. 2–3hr Z2 rides build the aerobic engine you need for the bike leg.</div></div>
+      <div class="insight-row"><div class="insight-dot" style="background:#BA7517;"></div><div><strong>Wednesday becomes brick day</strong> — bike immediately followed by a short run. This is the most race-specific triathlon session you can do. Teaches legs the T2 transition.</div></div>
+      <div class="insight-row"><div class="insight-dot" style="background:#378ADD;"></div><div><strong>Swim volume and intensity increases</strong> — Tue/Thu swims step up to 2,000–2,500m with structured intervals. Gym emphasis shifts toward upper body and core for swim power.</div></div>
+    </div>
+  </div>
+
+  <!-- AI COACH -->
+  <div id="tab-coach" class="section">
+    <div class="api-key-bar" id="api-key-bar">
+      <span style="color:#633806;font-weight:500;">API key required</span>
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." />
+      <button onclick="saveKey()">Save</button>
+      <span style="font-size:11px;color:#854F0B;">Your key is stored locally in this browser only. Get yours at console.anthropic.com</span>
+    </div>
+    <div id="api-status" style="display:none;font-size:12px;margin-bottom:12px;"><span class="status-dot green"></span>API key saved — coach is active</div>
+
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="askCoach('What should my Wednesday quality run look like this week for marathon training? Give me specific distances and paces.')">This week's Wednesday session</button>
+      <button class="quick-btn" onclick="askCoach('Should I do the optional Thursday run this week before my Friday long run?')">Thursday run or skip?</button>
+      <button class="quick-btn" onclick="askCoach('What strength exercises should I do Tuesday and Thursday for marathon and triathlon training?')">Gym session design</button>
+      <button class="quick-btn" onclick="askCoach('What swim sets should I do on Tuesday and Thursday right now?')">Swim session design</button>
+      <button class="quick-btn" onclick="askCoach('How long should my Friday long run be this week and what pace?')">Friday long run guidance</button>
+      <button class="quick-btn" onclick="askCoach('How does my schedule change after June 6th when triathlon training starts?')">Schedule after marathon</button>
+      <button class="quick-btn" onclick="askCoach('Build me a detailed week-by-week plan from today through both my marathon on June 6th and triathlon on July 25th, fitted to my exact schedule.')">Generate full season plan</button>
+    </div>
+
+    <div class="chat-wrap">
+      <div class="chat-area" id="chat-area">
+        <div class="msg coach">Welcome to your AI training coach! I have your full picture:<br><br>
+        <strong>Schedule:</strong> Monday easy buddy run · Tuesday & Thursday gym (weights + swim) · Wednesday quality run · Optional short run Tue/Thu · Friday long run (marathon) or long bike (tri) · Saturday & Sunday rest.<br><br>
+        <strong>Races:</strong> Marathon Jun 6 and Triathlon Jul 25 — 49 days apart. Marathon builds the run base, then we shift to full multisport mode.<br><br>
+        Add your Anthropic API key above (from console.anthropic.com) to activate the live coach, then ask me anything!</div>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ask your coach..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MARATHON = new Date('2026-06-06');
+const TRI = new Date('2026-07-25');
+const TODAY = new Date();
+
+function daysUntil(d) { return Math.max(0, Math.round((d - TODAY) / 86400000)); }
+function weeksUntil(d) { return Math.max(0, Math.round((d - TODAY) / (7*86400000))); }
+function getMonday(d) { const day=d.getDay(); const diff=(day===0)?-6:1-day; const m=new Date(d); m.setDate(d.getDate()+diff); return m; }
+function fmtDate(d) { return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function weekDates() { const m=getMonday(TODAY); return Array.from({length:7},(_,i)=>{ const d=new Date(m); d.setDate(m.getDate()+i); return d; }); }
+function planDates(start) { return Array.from({length:7},(_,i)=>{ const d=new Date(start); d.setDate(start.getDate()+i); return d; }); }
+
+const mWeeks = weeksUntil(MARATHON);
+const isTri = mWeeks === 0;
+
+function buildDayCard(dayName, dateStr, workouts, isToday, isKey, keyColor) {
+  const bs = isKey ? `border:1.5px solid ${keyColor};` : '';
+  const bg = isToday ? 'background:var(--bg-secondary);' : '';
+  const tb = isToday ? ' <span style="font-size:8px;background:var(--text-primary);color:var(--bg-primary);border-radius:3px;padding:1px 4px;">today</span>' : '';
+  const rows = workouts.map(w =>
+    `<div class="day-workout ${w.cls}">${w.text}</div><div class="note">${w.dist}</div><div class="goal">${w.goal}</div>`
+  ).join('');
+  return `<div class="day-card" style="${bs}${bg}"><div class="day-name">${dayName}${tb}</div><div class="day-date">${dateStr}</div>${rows}</div>`;
+}
+
+const MW = [
+  {name:'Mon',workouts:[{cls:'run',text:'Buddy run',dist:'5–8 miles',goal:'Z1-2 · conversational pace'}]},
+  {name:'Tue',workouts:[{cls:'strength',text:'Weights',dist:'45–60 min',goal:'Lower body · glutes, hips, single-leg'},{cls:'swim',text:'Swim',dist:'1,500–2,000m',goal:'Aerobic Z1-2 · technique focus'},{cls:'run',text:'Optional run',dist:'3–4 miles',goal:'Easy only · Z1 · skip if tired'}]},
+  {name:'Wed',workouts:[{cls:'run',text:'Quality run',dist:'7–10 miles total',goal:'Tempo 20 min or 6–8×800m intervals'}]},
+  {name:'Thu',workouts:[{cls:'strength',text:'Weights',dist:'45 min',goal:'Upper body + core · protect legs'},{cls:'swim',text:'Swim',dist:'1,500m',goal:'Easy aerobic Z1-2 · flush legs'},{cls:'run',text:'Optional run',dist:'3–4 miles',goal:'Z1 easy only · skip in peak weeks'}]},
+  {name:'Fri',workouts:[{cls:'run',text:'Long run',dist:'16–20 miles at peak',goal:'Z2 · 60–90 sec/mi slower than goal pace'}],key:true,keyColor:'#BA7517'},
+  {name:'Sat',workouts:[{cls:'rest',text:'Rest',dist:'—',goal:'Daily life · light walking fine'}]},
+  {name:'Sun',workouts:[{cls:'rest',text:'Rest',dist:'—',goal:'Daily life · active recovery ok'}]}
+];
+
+const TW = [
+  {name:'Mon',workouts:[{cls:'rest',text:'Full rest',dist:'—',goal:'No buddy run this week · body needs it'}]},
+  {name:'Tue',workouts:[{cls:'swim',text:'Easy swim',dist:'1,000m',goal:'Flush only · no intervals · Z1'},{cls:'rest',text:'No weights',dist:'—',goal:'Skip gym this week'}]},
+  {name:'Wed',workouts:[{cls:'bike',text:'Easy spin',dist:'30–40 min',goal:'Z1 only · zero hard effort'}]},
+  {name:'Thu',workouts:[{cls:'swim',text:'Swim',dist:'1,500m',goal:'Easy aerobic Z1-2'},{cls:'strength',text:'Light gym',dist:'30 min',goal:'Upper body only · no lower body'}]},
+  {name:'Fri',workouts:[{cls:'run',text:'Easy jog',dist:'20–30 min',goal:'Z1 only · no long run this week'}]},
+  {name:'Sat',workouts:[{cls:'rest',text:'Rest',dist:'—',goal:'Daily life'}]},
+  {name:'Sun',workouts:[{cls:'rest',text:'Rest',dist:'—',goal:'Daily life'}]}
+];
+
+const TriW = [
+  {name:'Mon',workouts:[{cls:'run',text:'Buddy run',dist:'5 miles',goal:'Z1-2 · recovery · conversational'}]},
+  {name:'Tue',workouts:[{cls:'strength',text:'Weights',dist:'45–60 min',goal:'Tri-specific · upper body + functional'},{cls:'swim',text:'Swim',dist:'2,000–2,500m',goal:'Interval set · e.g. 8×100m on 1:50'}]},
+  {name:'Wed',workouts:[{cls:'bike',text:'Bike',dist:'75–90 min',goal:'Z2-3 · 2×10 min at threshold'},{cls:'run',text:'Brick run',dist:'20–25 min',goal:'Straight off bike · practice T2 · Z2'}]},
+  {name:'Thu',workouts:[{cls:'swim',text:'Swim',dist:'2,000m',goal:'Aerobic Z2 · longer steady sets'},{cls:'strength',text:'Gym',dist:'40 min',goal:'Core + upper · no lower body'},{cls:'run',text:'Short run',dist:'3 miles',goal:'Easy Z1 · recovery run'}]},
+  {name:'Fri',workouts:[{cls:'bike',text:'Long bike',dist:'2–3 hours',goal:'Z2 endurance · steady aerobic effort'}],key:true,keyColor:'#378ADD'},
+  {name:'Sat',workouts:[{cls:'rest',text:'Rest',dist:'—',goal:'Daily life'}]},
+  {name:'Sun',workouts:[{cls:'rest',text:'Rest',dist:'—',goal:'Daily life'}]}
+];
+
+function renderGrid(id, days, dates) {
+  const todayStr = TODAY.toDateString();
+  document.getElementById(id).innerHTML = days.map((d,i) =>
+    buildDayCard(d.name, fmtDate(dates[i]), d.workouts, dates[i].toDateString()===todayStr, d.key||false, d.keyColor||'')
+  ).join('');
+}
+
+function buildKeyDates() {
+  const kd = [
+    {label:'Marathon taper begins',date:'May 23, 2026',color:'#633806',bg:'#FAEEDA'},
+    {label:'Marathon race day',date:'Jun 6, 2026',color:'#fff',bg:'#BA7517'},
+    {label:'Return to full training',date:'Jun 14–21, 2026',color:'#444441',bg:'#D3D1C7'},
+    {label:'Triathlon peak week',date:'Jul 12, 2026',color:'#185FA5',bg:'#B5D4F4'},
+    {label:'Triathlon taper begins',date:'Jul 18, 2026',color:'#185FA5',bg:'#E6F1FB'},
+    {label:'Triathlon race day',date:'Jul 25, 2026',color:'#fff',bg:'#378ADD'},
+  ];
+  document.getElementById('key-dates').innerHTML = kd.map(d =>
+    `<div class="kd-row"><span style="font-size:11px;font-weight:500;padding:2px 8px;border-radius:3px;background:${d.bg};color:${d.color};white-space:nowrap;">${d.date}</span><span style="color:var(--text-secondary);">${d.label}</span></div>`
+  ).join('');
+}
+
+function init() {
+  document.getElementById('m-days').textContent = daysUntil(MARATHON);
+  document.getElementById('t-days').textContent = daysUntil(TRI);
+  const phase = isTri
+    ? (weeksUntil(TRI)<=1?'Tri taper':weeksUntil(TRI)<=4?'Tri peak':'Tri build')
+    : (mWeeks<=3?'Marathon taper':mWeeks<=8?'Marathon peak':'Marathon base');
+  document.getElementById('m-phase').textContent = phase;
+  if (isTri) { document.getElementById('key-day').textContent='Fri'; document.getElementById('key-label').textContent='Long bike'; }
+
+  const wd = weekDates();
+  renderGrid('week-grid', isTri?TriW:MW, wd);
+  document.getElementById('week-label').textContent = `Week of ${fmtDate(wd[0])} — ${phase.toLowerCase()}`;
+  document.getElementById('week-note').textContent = isTri
+    ? 'Triathlon phase: Friday long ride is your key session. Wednesday brick is your most race-specific session.'
+    : 'Marathon phase: Friday long run is your key session. Skip the Thursday optional run in peak weeks.';
+
+  renderGrid('plan-marathon-grid', MW, weekDates());
+  renderGrid('plan-transition-grid', TW, planDates(getMonday(new Date('2026-06-07'))));
+  renderGrid('plan-tri-grid', TriW, planDates(getMonday(new Date('2026-06-21'))));
+  buildKeyDates();
+
+  const saved = localStorage.getItem('coach_api_key');
+  if (saved) { document.getElementById('api-key-bar').style.display='none'; document.getElementById('api-status').style.display='block'; }
+}
+
+function saveKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k.startsWith('sk-ant-')) { alert('Please enter a valid Anthropic API key starting with sk-ant-'); return; }
+  localStorage.setItem('coach_api_key', k);
+  document.getElementById('api-key-bar').style.display='none';
+  document.getElementById('api-status').style.display='block';
+}
+
+function showPlan(phase, btn) {
+  document.querySelectorAll('.phase-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['marathon','transition','tri'].forEach(p=>{ document.getElementById('plan-'+p).style.display=p===phase?'block':'none'; });
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+let _history = [];
+
+function askCoach(q) {
+  switchTab('coach', document.querySelectorAll('.tab')[3]);
+  setTimeout(()=>{ addMsg(q,'user'); _history.push({role:'user',content:q}); callCoach(); }, 50);
+}
+
+function sendChat() {
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim(); if(!text) return;
+  inp.value='';
+  addMsg(text,'user');
+  _history.push({role:'user',content:text});
+  callCoach();
+}
+
+function addMsg(text, role) {
+  const area = document.getElementById('chat-area');
+  const div = document.createElement('div');
+  div.className='msg '+role;
+  div.innerHTML=text.replace(/\n/g,'<br>');
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+  return div;
+}
+
+function addTyping() {
+  const area=document.getElementById('chat-area');
+  const div=document.createElement('div');
+  div.className='msg coach';
+  div.innerHTML='<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+  area.appendChild(div);
+  area.scrollTop=area.scrollHeight;
+  return div;
+}
+
+async function callCoach() {
+  const key = localStorage.getItem('coach_api_key');
+  if (!key) { addMsg('Please add your Anthropic API key at the top of the AI coach tab to activate the coach.','coach'); return; }
+  const typing = addTyping();
+  const system = `You are an elite triathlon and multisport AI coach. Here is everything you know about this athlete:
+
+RACES:
+- Marathon: June 6, 2026 (${daysUntil(MARATHON)} days / ${weeksUntil(MARATHON)} weeks away)
+- Triathlon: July 25, 2026 (${daysUntil(TRI)} days / ${weeksUntil(TRI)} weeks away, 49 days after marathon)
+
+FIXED WEEKLY SCHEDULE (non-negotiable — always work within this):
+- Monday: Easy 5–8 mile buddy run. Always Z1-2, conversational pace.
+- Tuesday: Gym (weights + swim) in the afternoon. Optional 3–4mi easy run also possible.
+- Wednesday: Quality run — tempo, intervals, or marathon-pace work. Key mid-week session.
+- Thursday: Gym (weights + swim) in the afternoon. Optional 3–4mi easy run — Z1 only, proximity to Friday.
+- Friday: KEY SESSION — long run in marathon phase (16–20mi at peak), long bike in triathlon phase (2–3hr).
+- Saturday: Rest / daily life.
+- Sunday: Rest / daily life.
+
+TRAINING MIX: Swim, Bike, Run, Strength.
+CURRENT PHASE: ${mWeeks>0?`Marathon training (${mWeeks} weeks to marathon). Run is priority. Swim and bike aerobic only.`:`Triathlon training (${weeksUntil(TRI)} weeks to tri). Full multisport. Friday = long bike. Wednesday = brick.`}
+
+Always give specific distances, paces, sets, and session goals. Be direct, motivating, and concise (2–4 paragraphs). Plain text only, no markdown.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system,messages:_history})
+    });
+    const data = await res.json();
+    typing.remove();
+    if (data.error) { addMsg('API error: '+data.error.message,'coach'); return; }
+    const reply = data.content?.[0]?.text || 'Connection issue — please try again.';
+    addMsg(reply,'coach');
+    _history.push({role:'assistant',content:reply});
+  } catch(e) {
+    typing.remove();
+    addMsg('Connection error: '+e.message,'coach');
+  }
+}
+
+init();
+</script>
+</body>
+</html>
